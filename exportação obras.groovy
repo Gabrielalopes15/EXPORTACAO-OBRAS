@@ -246,10 +246,194 @@ def editandoObras (){
 }
 
 def inicioObras(){
-
-
+  
+  fonteHistoricos = Dados.obras.v1.obras.historicos;
+  dadosHistoricos = fonteHistoricos.busca(campos: "situacaoNova, dhRealMovimento, obra(codObra, descricao)")
+  
+  
+  csv = Arquivo.novo('inicioObras.csv','csv',[delimitador: ';' ])
+  cabecalhos = [
+    'codigo obra', 'descricao', 'data inicio', 'situacao'
+  ]
+  
+  percorrer (cabecalhos) { cabecalho ->
+    csv.escrever(cabecalho)
+  }
+  csv.novaLinha()
+  percorrer (dadosHistoricos) { itemHistoricos ->
+    if( item.situacaoNova == 'EM_ANDAMENTO'){
+      csv.escrever(item.obra.codObra)
+      csv.escrever(item.obra.descricao)
+      csv.escrever(item.dhRealMovimento.formatar('dd/MM/yyyy'))
+      csv.escrever(item.situacaoNova)
+      csv.novaLinha()
+    }
+  }
+  return csv
+  
 }
 
+
+def obrasResponsabilidadeTec (){
+  
+  fonteAnotacoesTecnicas = Dados.obras.v1.obras.anotacoesTecnicas;
+  dadosAnotacoesTecnicas = fonteAnotacoesTecnicas.busca(campos: "obra(codObra, descricao), dataInclusao, nroResponsabilidadeTecnica, tipoResponsabilidade(descricao), responsavelTecnico(pessoa(nome))")
+  
+  csv = Arquivo.novo('obrasResponsabilidadeTec.csv','csv',[delimitador: ';' ])
+  cabecalhos = [
+    'codigo obra', 'descricao', 'data inclusao', 'nro responsabilidade', 'tipo responsabiliade', 'nome responsavel'
+  ]
+  
+  percorrer (cabecalhos) { cabecalho ->
+    csv.escrever(cabecalho)
+  }
+  
+  
+  
+  percorrer (dadosAnotacoesTecnicas) { itemAnotacoesTecnicas ->
+    csv.escrever(item.obra.codObra)
+    csv.escrever(item.obra.descricao)
+    csv.escrever(item.dataInclusao.formatar('dd/MM/yyyy'))
+    csv.escrever(item.nroResponsabilidadeTecnica)
+    csv.escrever(item.tipoResponsabilidade.descricao)
+    csv.escrever(item.responsavelTecnico.pessoa.nome)
+    csv.novaLinha()    
+  }
+  return csv
+  
+}
+
+def obrasCNOS(){
+  
+  fonteMatriculas = Dados.obras.v1.obras.matriculas;
+  dadosMatriculas = fonteMatriculas.busca(campos: "obra(codObra, descricao), matriculaCei(numeroMatricula), dataMatriculaObra")
+  
+  csv = Arquivo.novo('obrasCNOS.csv','csv',[delimitador: ';' ])
+  cabecalhos = [
+    'codigo obra', 'descricao', 'matricula', 'data matricula'
+  ]
+  
+  percorrer (cabecalhos) { cabecalho ->
+    csv.escrever(cabecalho)
+  }
+  csv.novaLinha()  
+  
+  percorrer (dadosMatriculas) { itemMatriculas ->
+    
+    csv.escrever(item.obra.codObra)
+    csv.escrever(item.obra.descricao)
+    csv.escrever(item.matriculaCei.numeroMatricula)
+    csv.escrever(item.dataMatriculaObra.formatar('dd/MM/yyyy') )
+    csv.novaLinha()  
+  }
+  return csv
+  
+}
+
+
+def obraslicitacoes(){
+  
+  fonteLicitacoes = Dados.obras.v1.obras.licitacoes;
+  dadosLicitacoes = fonteLicitacoes.busca(campos: "processoAdministrativo(nroProcAdm, anoProcAdm), obra(codObra, descricao), dataInclusao, numeroProcesso, anoProcesso")
+  
+  csv = Arquivo.novo('obrasLicitacoes.csv','csv',[delimitador: ';' ])
+  cabecalho = [
+    'codigo obra', 'descricao', 'n processo', 'ano processo', 'data inclusao'
+  ]
+  percorrer(cabecalho){ cabecalho ->
+    csv.escrever(cabecalho)
+  }
+  csv.novaLinha()  
+  
+  percorrer (dadosLicitacoes) { itemLicitacoes ->
+    csv.escrever(item.obra.codObra)
+    csv.escrever(item.obra.descricao)
+    csv.escrever(item.numeroProcesso)
+    csv.escrever(item.anoProcesso)
+    csv.escrever(item.dataInclusao.formatar('dd/MM/yyyy'))
+    csv.novaLinha()  
+    
+  }
+  return csv
+  
+}
+
+
+def obrasContratosAditivos(){
+  
+  fonteContratos = Dados.obras.v1.obras.contratos;
+  dadosContratos = fonteContratos.busca(campos: "numeroContrato, anoContrato, dataInclusaoContrato, obra(codObra, descricao)")
+  
+  fonteAditivos = Dados.obras.v1.obras.aditivos;
+  dadosAditivos = fonteAditivos.busca(campos: "obra(codObra, descricao), dataInclusaoAditivo, aditivo(nroAditivo, contrato(nroContrato, anoContrato))")
+  
+  // MAPA DE ADITIVOS AGRUPADOS POR CONTRATO
+  // Chave: "numeroContrato|anoContrato"
+  // Valor: lista de aditivos para esse contrato
+  mapaAditivosPorContrato = [:]
+  
+  percorrer (dadosAditivos) { itemAditivo ->
+    chaveContrato = itemAditivo.aditivo.contrato.nroContrato + "|" + itemAditivo.aditivo.contrato.anoContrato
+    
+    if (!mapaAditivosPorContrato[chaveContrato]) {
+      mapaAditivosPorContrato[chaveContrato] = []
+    }
+    
+    // Adiciona o aditivo à lista do contrato
+    mapaAditivosPorContrato[chaveContrato]<<([
+      nroAditivo: itemAditivo.aditivo.nroAditivo,
+      dataInclusaoAditivo: itemAditivo.dataInclusaoAditivo,
+      obraCodigo: itemAditivo.obra.codObra,
+      obraDescricao: itemAditivo.obra.descricao
+    ])
+  }
+  
+  csv = Arquivo.novo('obrasContratosAditivos.csv','csv',[delimitador: ';'])
+  cabecalho = [
+    'codigo obra', 'descricao', 'n contrato', 'ano contrato', 
+    'data inclusao contrato', 'n aditivo', 'data inclusao aditivo'
+  ]
+  
+  percorrer(cabecalho){ campo ->
+    csv.escrever(campo)
+  }
+  csv.novaLinha()  
+  
+  percorrer (dadosContratos) { itemContrato ->  // Nome correto da variável
+    
+    // CHAVE PARA BUSCAR NO MAPA
+    chaveContrato = itemContrato.numeroContrato + "|" + itemContrato.anoContrato
+    
+    // BUSCAR ADITIVOS DESTE CONTRATO
+    aditivosDoContrato = mapaAditivosPorContrato[chaveContrato] ?: []
+    
+    if (aditivosDoContrato.size() > 0) {
+      // SE TEM ADITIVOS: escreve uma linha para cada aditivo
+      percorrer (aditivosDoContrato) { aditivo ->
+        csv.escrever(itemContrato.obra.codObra ?: aditivo.obraCodigo ?: "")
+        csv.escrever(itemContrato.obra.descricao ?: aditivo.obraDescricao ?: "")
+        csv.escrever(itemContrato.numeroContrato)
+        csv.escrever(itemContrato.anoContrato)
+        csv.escrever(itemContrato.dataInclusaoContrato.formatar('dd/MM/yyyy') ?: "")
+        csv.escrever(aditivo.nroAditivo ?: "")
+        csv.escrever(aditivo.dataInclusaoAditivo?.formatar('dd/MM/yyyy') ?: "")
+        csv.novaLinha()
+      }
+    } else {
+      // SE NÃO TEM ADITIVOS: escreve apenas o contrato
+      csv.escrever(itemContrato.obra.codObra ?: "")
+      csv.escrever(itemContrato.obra.descricao ?: "")
+      csv.escrever(itemContrato.numeroContrato)
+      csv.escrever(itemContrato.anoContrato)
+      csv.escrever(itemContrato.dataInclusaoContrato.formatar('dd/MM/yyyy') ?: "")
+      csv.escrever("") // n aditivo vazio
+      csv.escrever("") // data inclusao aditivo vazia
+      csv.novaLinha()
+    }
+  }
+  
+  return csv
+}
 
 
 
@@ -315,11 +499,15 @@ def demaisCadastros(){
   //arquivo.adicionar(cnos())
   
   
-  arquivo.adicionar(editandoObras())
-  
+  //arquivo.adicionar(editandoObras())
+  arquivo.adicionar(inicioObras())
+  arquivo.adicionar(obrasResponsabilidadeTec ())
+  arquivo.adicionar(obrasCNOS())
+  arquivo.adicionar(obraslicitacoes())
+  arquivo.adicionar(obrasContratosAditivos())
   Resultado.arquivo(arquivo)
 }
 
 //cadastrosAuxiliares()
 demaisCadastros()
-anexosObras()
+//anexosObras()
