@@ -435,6 +435,74 @@ def obrasContratosAditivos(){
   return csv
 }
 
+def obrasMedicoes(){
+  
+  fonteMedicoes = Dados.obras.v1.obras.medicoes;
+  dadosMedicoes = fonteMedicoes.busca(campos: "obra(codObra, descricao), responsavelTecnico(pessoa(nome)), dataInicial, dataFinal, dataMedicao, tipoMedicao(descricao), obraAditivo(aditivo(nroAnoAditivo)), valor, percentFisico, camposAdicionais(padrao(utilizaPlanilhaModelo))")
+  
+  csv = Arquivo.novo('obrasMedicoes.csv','csv',[delimitador: ';'])
+  cabecalho = [
+    'codigo obra', 'descricao', 'responsavel tec', 'data inicial', 
+    'data final', 'data medicao', 'tipo medicao', 'aditivo', 'valor', 'percentual fisico', 'campo adicional'
+  ]
+  
+  percorrer(cabecalho){ campo ->
+    csv.escrever(campo)
+  }
+  csv.novaLinha()  
+  percorrer (dadosMedicoes) { item ->
+    
+    campoadicional = [:]
+    
+    percentFisico = item.percentFisico
+    percentStr = Numeros.decimal("${percentFisico}")
+    
+    tipoMedicao = item.tipoMedicao.descricao
+    
+    switch (tipoMedicao){
+      case "1 – Medição a preços iniciais":
+      descricaoTipoMedicao = "1"
+      break
+      
+      case "2 – Medição de reajuste":
+      descricaoTipoMedicao = "2"
+      break
+      
+      case "3 – Medição complementar":
+      descricaoTipoMedicao = "3"
+      break
+      
+      case "4 – Medição final":
+      descricaoTipoMedicao = "4"
+      break
+      
+      case "5 – Medição de termo aditivo":
+      descricaoTipoMedicao = "5"
+      break
+      
+      case "9 – Outro documento de medição	":
+      descricaoTipoMedicao = "9"
+      break
+
+      
+    }
+    
+    csv.escrever(item.obra.codObra)
+    csv.escrever(item.obra.descricao)
+    csv.escrever(item.responsavelTecnico.pessoa.nome)
+    csv.escrever(item.dataInicial.formatar('dd/MM/yyyy'))
+    csv.escrever(item.dataFinal.formatar('dd/MM/yyyy'))
+    csv.escrever(item.dataMedicao.formatar('dd/MM/yyyy'))
+    csv.escrever(descricaoTipoMedicao)
+    csv.escrever(item.obraAditivo.aditivo.nroAnoAditivo)
+    csv.escrever(item.valor)
+    csv.escrever(percentStr)
+    csv.escrever(item.camposAdicionais.padrao.utilizaPlanilhaModelo.valor ?: "")
+    csv.novaLinha()
+  }
+  return csv
+}
+
 
 
 //CHAMADA DAS FUNÇÕES PARA PASTA ZIP
@@ -500,11 +568,12 @@ def demaisCadastros(){
   
   
   //arquivo.adicionar(editandoObras())
-  arquivo.adicionar(inicioObras())
-  arquivo.adicionar(obrasResponsabilidadeTec ())
-  arquivo.adicionar(obrasCNOS())
+  //arquivo.adicionar(inicioObras())
+  //arquivo.adicionar(obrasResponsabilidadeTec ())
+  //arquivo.adicionar(obrasCNOS())
   arquivo.adicionar(obraslicitacoes())
-  arquivo.adicionar(obrasContratosAditivos())
+  arquivo.adicionar(obrasMedicoes())
+  //arquivo.adicionar(obrasContratosAditivos())
   Resultado.arquivo(arquivo)
 }
 
